@@ -40,7 +40,7 @@ export default function Home() {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-8 text-white">
-        <h1 className="text-3xl font-bold mb-4">로또 ML 예측 서비스</h1>
+        <h1 className="text-3xl font-bold mb-4">로또 Machine Learning 예측 서비스</h1>
         <p className="text-blue-100 mb-6">
           머신러닝 기반 로또 번호 분석 및 예측 서비스입니다.
           <br />

@@ -1,4 +1,4 @@
-# 로또 ML 예측 웹 애플리케이션 - 구현 가이드 (Implement)
+# 로또 Machine Learning 예측 웹 애플리케이션 - 구현 가이드 (Implement)
 
 **Feature:** 001-lotto-ml-prediction  
 **작성일:** 2025-12-23  
@@ -65,7 +65,7 @@ from routers import results, statistics, predict, recommend, admin
 from models.database import init_db
 
 app = FastAPI(
-    title="로또 ML 예측 API",
+    title="로또 Machine Learning 예측 API",
     description="머신러닝 기반 로또 번호 예측 서비스",
     version="1.0.0"
 )

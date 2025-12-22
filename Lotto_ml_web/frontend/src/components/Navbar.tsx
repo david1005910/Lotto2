@@ -17,7 +17,7 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="text-xl font-bold">
-            로또 ML 예측
+            로또 Machine Learning 예측
           </Link>
           <div className="flex space-x-1">
             {navItems.map((item) => (

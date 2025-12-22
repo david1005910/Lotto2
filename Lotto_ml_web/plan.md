@@ -1,4 +1,4 @@
-# 로또 ML 예측 웹 애플리케이션 - 기술 계획서 (Plan)
+# 로또 Machine Learning 예측 웹 애플리케이션 - 기술 계획서 (Plan)
 
 **Feature:** 001-lotto-ml-prediction  
 **Branch:** 001-lotto-ml-prediction  

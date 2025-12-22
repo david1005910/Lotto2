@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="로또 ML 예측 API",
+    title="로또 Machine Learning 예측 API",
     description="머신러닝 기반 로또 번호 예측 서비스",
     version="1.0.0",
     docs_url="/docs",
@@ -52,7 +52,7 @@ app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
 async def root():
     """Root endpoint."""
     return {
-        "message": "로또 ML 예측 API",
+        "message": "로또 Machine Learning 예측 API",
         "version": "1.0.0",
         "docs": "/docs"
     }
