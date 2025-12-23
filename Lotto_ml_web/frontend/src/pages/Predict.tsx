@@ -109,7 +109,7 @@ export default function Predict() {
           <div>
             <h3 className="font-semibold text-gray-800">Neural Network (MLP)</h3>
             <p className="text-sm">
-              128-64-32 구조의 다층 퍼셉트론입니다. 비선형 관계를 학습할 수 있습니다.
+              64-32 구조의 다층 퍼셉트론입니다. 정규화와 조기 종료로 과적합을 방지합니다.
             </p>
           </div>
         </div>

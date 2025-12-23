@@ -115,7 +115,8 @@ export interface SyncData {
 
 // Train Response
 export interface ModelTrainResult {
-  accuracy: number;
+  train_accuracy: number;
+  test_accuracy: number;
   trained: boolean;
 }
 
@@ -123,4 +124,5 @@ export interface TrainData {
   models: Record<string, ModelTrainResult>;
   trained_at: string;
   training_samples: number;
+  test_samples: number;
 }

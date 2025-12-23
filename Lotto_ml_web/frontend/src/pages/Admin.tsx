@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { LoadingSpinner, ErrorMessage } from '../components';
-import type { SystemStatus } from '../types';
+import type { SystemStatus, TrainData } from '../types';
 
 export default function Admin() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
@@ -10,6 +10,7 @@ export default function Admin() {
   const [syncing, setSyncing] = useState(false);
   const [training, setTraining] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [trainResult, setTrainResult] = useState<TrainData | null>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -43,10 +44,12 @@ export default function Admin() {
   const handleTrain = async () => {
     setTraining(true);
     setMessage(null);
+    setTrainResult(null);
     try {
       const response = await api.admin.train();
       const modelCount = Object.keys(response.data.models).length;
       setMessage(`${modelCount}개 모델 학습 완료`);
+      setTrainResult(response.data);
       fetchStatus();
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || '모델 학습 중 오류가 발생했습니다.';
@@ -179,6 +182,50 @@ export default function Admin() {
           </div>
         </div>
       </div>
+
+      {/* Training Results */}
+      {trainResult && (
+        <div className="bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">학습 결과</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            학습 샘플: {trainResult.training_samples}개 / 테스트 샘플: {trainResult.test_samples}개
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3">모델</th>
+                  <th className="text-right py-2 px-3">Train Accuracy</th>
+                  <th className="text-right py-2 px-3">Test Accuracy</th>
+                  <th className="text-right py-2 px-3">과적합 Gap</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(trainResult.models).map(([name, result]) => {
+                  const gap = result.train_accuracy - result.test_accuracy;
+                  return (
+                    <tr key={name} className="border-b">
+                      <td className="py-2 px-3 font-medium">{name}</td>
+                      <td className="text-right py-2 px-3">
+                        {(result.train_accuracy * 100).toFixed(2)}%
+                      </td>
+                      <td className="text-right py-2 px-3 text-green-600 font-semibold">
+                        {(result.test_accuracy * 100).toFixed(2)}%
+                      </td>
+                      <td className={`text-right py-2 px-3 ${gap > 0.15 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {(gap * 100).toFixed(2)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-500 mt-3">
+            ※ Test Accuracy가 실제 예측 성능입니다. (±3 범위 기준)
+          </p>
+        </div>
+      )}
 
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
