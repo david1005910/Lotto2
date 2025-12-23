@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import CORS_ORIGINS, API_HOST, API_PORT, DEBUG
-from models.database import init_db
+from services.excel_service import ensure_data_dir
 from routers import (
     results_router,
     statistics_router,
@@ -16,8 +16,8 @@ from routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
-    # Startup
-    init_db()
+    # Startup - ensure data directory exists
+    ensure_data_dir()
     yield
     # Shutdown (cleanup if needed)
 

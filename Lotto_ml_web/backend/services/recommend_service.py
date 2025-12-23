@@ -2,22 +2,20 @@ import random
 from typing import Dict, Any, List
 from collections import Counter
 
-from models.database import get_db
+from services.excel_service import load_from_excel
 
 
 def get_recommendations() -> Dict[str, Any]:
     """Generate all recommendation strategies."""
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT num1, num2, num3, num4, num5, num6
-            FROM lotto_results
-            ORDER BY draw_no DESC
-        ''')
-        rows = cursor.fetchall()
+    df = load_from_excel()
 
-    if not rows:
+    if df is None or len(df) == 0:
         return {"recommendations": {}}
+
+    # Sort by draw_no descending and convert to list of tuples
+    df = df.sort_values('draw_no', ascending=False)
+    rows = [(row['num1'], row['num2'], row['num3'], row['num4'], row['num5'], row['num6'])
+            for _, row in df.iterrows()]
 
     return {
         "recommendations": {

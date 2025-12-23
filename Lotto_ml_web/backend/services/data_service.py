@@ -4,7 +4,16 @@ from typing import Optional, Dict, List, Tuple, Any
 from datetime import datetime
 
 from config import DHLOTTERY_API_URL, CURRENT_DRAW_NO
-from models.database import get_db, get_latest_draw, get_total_draws
+from services.excel_service import (
+    excel_exists,
+    load_from_excel,
+    save_to_excel,
+    append_to_excel,
+    get_latest_draw_from_excel,
+    get_total_draws_from_excel,
+    get_all_results_from_excel,
+    get_result_by_draw_no_from_excel
+)
 
 
 def fetch_lotto_result(draw_no: int) -> Optional[Dict[str, Any]]:
@@ -26,7 +35,7 @@ def fetch_lotto_result(draw_no: int) -> Optional[Dict[str, Any]]:
                     data["drwtNo4"], data["drwtNo5"], data["drwtNo6"]
                 ]),
                 "bonus": data["bnusNo"],
-                "prize_1st": data.get("firstWinamnt")
+                "prize_1st": data.get("firstWinamnt", 0)
             }
         return None
     except Exception as e:
@@ -34,58 +43,76 @@ def fetch_lotto_result(draw_no: int) -> Optional[Dict[str, Any]]:
         return None
 
 
-def save_result(result: Dict[str, Any]) -> bool:
-    """Save lotto result to database."""
-    try:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            numbers = result["numbers"]
-            cursor.execute('''
-                INSERT OR IGNORE INTO lotto_results
-                (draw_no, draw_date, num1, num2, num3, num4, num5, num6, bonus, prize_1st)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                result["draw_no"],
-                result["draw_date"],
-                numbers[0], numbers[1], numbers[2],
-                numbers[3], numbers[4], numbers[5],
-                result["bonus"],
-                result["prize_1st"]
-            ))
-            return cursor.rowcount > 0
-    except Exception as e:
-        print(f"Error saving result: {e}")
-        return False
+def update_data() -> Tuple[int, int]:
+    """Update data by fetching new draws from API and saving to Excel."""
+    latest_excel = get_latest_draw_from_excel() or 0
+    new_results = []
 
+    print(f"Current latest draw in Excel: {latest_excel}")
+    print(f"Fetching new draws from {latest_excel + 1} to {CURRENT_DRAW_NO}...")
 
-def sync_incremental() -> Tuple[int, int]:
-    """Sync new draws only (incremental sync)."""
-    latest_db = get_latest_draw() or 0
-    synced_count = 0
-
-    for draw_no in range(latest_db + 1, CURRENT_DRAW_NO + 1):
+    for draw_no in range(latest_excel + 1, CURRENT_DRAW_NO + 1):
         result = fetch_lotto_result(draw_no)
-        if result and save_result(result):
-            synced_count += 1
+        if result:
+            new_results.append(result)
 
-    latest_draw = get_latest_draw() or CURRENT_DRAW_NO
-    return synced_count, latest_draw
+        if draw_no % 100 == 0:
+            print(f"Fetched {draw_no} draws...")
+
+    if new_results:
+        append_to_excel(new_results)
+        print(f"Updated {len(new_results)} new draws")
+    else:
+        print("No new draws to update")
+
+    latest_draw = get_latest_draw_from_excel() or CURRENT_DRAW_NO
+    return len(new_results), latest_draw
 
 
 def sync_full() -> Tuple[int, int]:
-    """Sync all draws from 1 to current (full sync)."""
-    synced_count = 0
+    """Sync all draws from 1 to current (full sync) and save to Excel."""
+    all_results = []
+
+    print(f"Full sync: Fetching draws 1 to {CURRENT_DRAW_NO}...")
 
     for draw_no in range(1, CURRENT_DRAW_NO + 1):
         result = fetch_lotto_result(draw_no)
-        if result and save_result(result):
-            synced_count += 1
+        if result:
+            all_results.append(result)
 
         if draw_no % 100 == 0:
             print(f"Synced {draw_no} draws...")
 
-    latest_draw = get_latest_draw() or CURRENT_DRAW_NO
-    return synced_count, latest_draw
+    if all_results:
+        # Convert to DataFrame and save
+        rows = []
+        for result in all_results:
+            numbers = result["numbers"]
+            rows.append({
+                "draw_no": result["draw_no"],
+                "draw_date": result["draw_date"],
+                "num1": numbers[0],
+                "num2": numbers[1],
+                "num3": numbers[2],
+                "num4": numbers[3],
+                "num5": numbers[4],
+                "num6": numbers[5],
+                "bonus": result["bonus"],
+                "prize_1st": result.get("prize_1st", 0)
+            })
+
+        df = pd.DataFrame(rows)
+        df = df.sort_values('draw_no').reset_index(drop=True)
+        save_to_excel(df)
+        print(f"Saved {len(all_results)} draws to Excel")
+
+    latest_draw = get_latest_draw_from_excel() or CURRENT_DRAW_NO
+    return len(all_results), latest_draw
+
+
+def sync_incremental() -> Tuple[int, int]:
+    """Sync new draws only (incremental sync) - alias for update_data."""
+    return update_data()
 
 
 def get_results(
@@ -95,89 +122,58 @@ def get_results(
     from_draw: Optional[int] = None,
     to_draw: Optional[int] = None
 ) -> Tuple[List[Dict[str, Any]], int]:
-    """Get paginated lotto results."""
-    with get_db() as conn:
-        cursor = conn.cursor()
+    """Get paginated lotto results from Excel."""
+    df = load_from_excel()
 
-        # Build query
-        where_clauses = []
-        params: List[Any] = []
+    if df is None or len(df) == 0:
+        return [], 0
 
-        if from_draw is not None:
-            where_clauses.append("draw_no >= ?")
-            params.append(from_draw)
-        if to_draw is not None:
-            where_clauses.append("draw_no <= ?")
-            params.append(to_draw)
+    # Apply filters
+    if from_draw is not None:
+        df = df[df['draw_no'] >= from_draw]
+    if to_draw is not None:
+        df = df[df['draw_no'] <= to_draw]
 
-        where_sql = ""
-        if where_clauses:
-            where_sql = "WHERE " + " AND ".join(where_clauses)
+    total = len(df)
 
-        # Get total count
-        count_sql = f"SELECT COUNT(*) FROM lotto_results {where_sql}"
-        cursor.execute(count_sql, params)
-        total = cursor.fetchone()[0]
+    # Sort
+    ascending = sort.lower() != "desc"
+    df = df.sort_values('draw_no', ascending=ascending)
 
-        # Get paginated results
-        order = "DESC" if sort.lower() == "desc" else "ASC"
-        offset = (page - 1) * limit
+    # Paginate
+    offset = (page - 1) * limit
+    df = df.iloc[offset:offset + limit]
 
-        query_sql = f'''
-            SELECT draw_no, draw_date, num1, num2, num3, num4, num5, num6, bonus, prize_1st
-            FROM lotto_results
-            {where_sql}
-            ORDER BY draw_no {order}
-            LIMIT ? OFFSET ?
-        '''
-        params.extend([limit, offset])
+    # Convert to list of dicts
+    results = []
+    for _, row in df.iterrows():
+        results.append({
+            "draw_no": int(row["draw_no"]),
+            "draw_date": str(row["draw_date"]),
+            "numbers": [int(row["num1"]), int(row["num2"]), int(row["num3"]),
+                       int(row["num4"]), int(row["num5"]), int(row["num6"])],
+            "bonus": int(row["bonus"]),
+            "prize_1st": int(row["prize_1st"]) if pd.notna(row["prize_1st"]) else 0
+        })
 
-        cursor.execute(query_sql, params)
-        rows = cursor.fetchall()
-
-        results = []
-        for row in rows:
-            results.append({
-                "draw_no": row["draw_no"],
-                "draw_date": row["draw_date"],
-                "numbers": [row["num1"], row["num2"], row["num3"],
-                           row["num4"], row["num5"], row["num6"]],
-                "bonus": row["bonus"],
-                "prize_1st": row["prize_1st"]
-            })
-
-        return results, total
+    return results, total
 
 
 def get_result_by_draw_no(draw_no: int) -> Optional[Dict[str, Any]]:
-    """Get single lotto result by draw number."""
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT draw_no, draw_date, num1, num2, num3, num4, num5, num6, bonus, prize_1st
-            FROM lotto_results
-            WHERE draw_no = ?
-        ''', (draw_no,))
-        row = cursor.fetchone()
-
-        if row:
-            return {
-                "draw_no": row["draw_no"],
-                "draw_date": row["draw_date"],
-                "numbers": [row["num1"], row["num2"], row["num3"],
-                           row["num4"], row["num5"], row["num6"]],
-                "bonus": row["bonus"],
-                "prize_1st": row["prize_1st"]
-            }
-        return None
+    """Get single lotto result by draw number from Excel."""
+    return get_result_by_draw_no_from_excel(draw_no)
 
 
 def get_all_results_df() -> pd.DataFrame:
     """Get all results as pandas DataFrame for ML processing."""
-    with get_db() as conn:
-        df = pd.read_sql_query('''
-            SELECT draw_no, draw_date, num1, num2, num3, num4, num5, num6, bonus, prize_1st
-            FROM lotto_results
-            ORDER BY draw_no ASC
-        ''', conn)
-    return df
+    return get_all_results_from_excel()
+
+
+def get_total_draws() -> int:
+    """Get total number of draws."""
+    return get_total_draws_from_excel()
+
+
+def get_latest_draw() -> Optional[int]:
+    """Get latest draw number."""
+    return get_latest_draw_from_excel()

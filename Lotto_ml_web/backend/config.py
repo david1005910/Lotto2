@@ -30,3 +30,6 @@ CORS_ORIGINS = os.getenv(
 
 # ML Models
 MODEL_PATH = BASE_DIR / os.getenv("MODEL_PATH", "ml_models")
+
+# Excel Data File
+EXCEL_DATA_PATH = BASE_DIR / "data" / "lotto_data.xlsx"

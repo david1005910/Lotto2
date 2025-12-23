@@ -9,16 +9,43 @@ from models.schemas import (
     MLModelStatus,
     ModelTrainResult
 )
-from models.database import get_total_draws, get_latest_draw, get_db
-from services.data_service import sync_incremental, sync_full
+from services.data_service import (
+    sync_incremental,
+    sync_full,
+    update_data,
+    get_total_draws,
+    get_latest_draw,
+    get_result_by_draw_no
+)
 from services.ml_service import train_models, get_model_status
 
 router = APIRouter()
 
 
+@router.post("/update", response_model=APIResponse[SyncResponse])
+async def update_lotto_data():
+    """Update lotto data from API and save to Excel (recommended method)."""
+    try:
+        updated_count, latest_draw = update_data()
+
+        return APIResponse(
+            status="success",
+            data=SyncResponse(
+                synced_count=updated_count,
+                latest_draw=latest_draw
+            ),
+            message=f"{updated_count}개 새로운 회차 업데이트 완료"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"업데이트 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
 @router.post("/sync", response_model=APIResponse[SyncResponse])
 async def sync_data():
-    """Sync new lotto results (incremental sync)."""
+    """Sync new lotto results (incremental sync) - alias for update."""
     try:
         synced_count, latest_draw = sync_incremental()
 
@@ -39,7 +66,7 @@ async def sync_data():
 
 @router.post("/sync/full", response_model=APIResponse[SyncResponse])
 async def sync_data_full():
-    """Sync all lotto results from draw 1 (full sync)."""
+    """Sync all lotto results from draw 1 (full sync) - creates new Excel file."""
     try:
         synced_count, latest_draw = sync_full()
 
@@ -49,7 +76,7 @@ async def sync_data_full():
                 synced_count=synced_count,
                 latest_draw=latest_draw
             ),
-            message=f"전체 {synced_count}개 회차 동기화 완료"
+            message=f"전체 {synced_count}개 회차 동기화 완료 (Excel 저장)"
         )
     except Exception as e:
         raise HTTPException(
@@ -99,18 +126,12 @@ async def get_status():
     total_draws = get_total_draws()
     latest_draw = get_latest_draw()
 
-    # Get latest date
+    # Get latest date from Excel data
     latest_date = None
     if latest_draw:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT draw_date FROM lotto_results WHERE draw_no = ?",
-                (latest_draw,)
-            )
-            row = cursor.fetchone()
-            if row:
-                latest_date = row["draw_date"]
+        result = get_result_by_draw_no(latest_draw)
+        if result:
+            latest_date = result["draw_date"]
 
     ml_status = get_model_status()
 

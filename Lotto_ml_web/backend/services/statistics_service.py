@@ -1,50 +1,43 @@
 from typing import Dict, Any, Optional, List
 from collections import Counter
 
-from models.database import get_db
+from services.excel_service import load_from_excel
 
 
 def calculate_statistics(recent: Optional[int] = None) -> Dict[str, Any]:
     """Calculate comprehensive lotto statistics."""
-    with get_db() as conn:
-        cursor = conn.cursor()
+    df = load_from_excel()
 
-        # Get results (all or recent N)
-        if recent:
-            cursor.execute('''
-                SELECT num1, num2, num3, num4, num5, num6, bonus
-                FROM lotto_results
-                ORDER BY draw_no DESC
-                LIMIT ?
-            ''', (recent,))
-        else:
-            cursor.execute('''
-                SELECT num1, num2, num3, num4, num5, num6, bonus
-                FROM lotto_results
-                ORDER BY draw_no DESC
-            ''')
+    if df is None or len(df) == 0:
+        return _empty_statistics()
 
-        rows = cursor.fetchall()
-        total_draws = len(rows)
+    # Sort by draw_no descending
+    df = df.sort_values('draw_no', ascending=False)
 
-        if total_draws == 0:
-            return _empty_statistics()
+    # Limit to recent N if specified
+    if recent:
+        df = df.head(recent)
 
-        # Calculate all statistics
-        number_frequency = _calculate_number_frequency(rows)
-        odd_even_distribution = _calculate_odd_even(rows)
-        sum_distribution = _calculate_sum_distribution(rows)
-        consecutive_stats = _calculate_consecutive(rows)
-        section_distribution = _calculate_section_distribution(rows)
+    # Convert to list of tuples (num1, num2, num3, num4, num5, num6, bonus)
+    rows = [(row['num1'], row['num2'], row['num3'], row['num4'], row['num5'], row['num6'], row['bonus'])
+            for _, row in df.iterrows()]
+    total_draws = len(rows)
 
-        return {
-            "number_frequency": number_frequency,
-            "odd_even_distribution": odd_even_distribution,
-            "sum_distribution": sum_distribution,
-            "consecutive_stats": consecutive_stats,
-            "section_distribution": section_distribution,
-            "total_draws": total_draws
-        }
+    # Calculate all statistics
+    number_frequency = _calculate_number_frequency(rows)
+    odd_even_distribution = _calculate_odd_even(rows)
+    sum_distribution = _calculate_sum_distribution(rows)
+    consecutive_stats = _calculate_consecutive(rows)
+    section_distribution = _calculate_section_distribution(rows)
+
+    return {
+        "number_frequency": number_frequency,
+        "odd_even_distribution": odd_even_distribution,
+        "sum_distribution": sum_distribution,
+        "consecutive_stats": consecutive_stats,
+        "section_distribution": section_distribution,
+        "total_draws": total_draws
+    }
 
 
 def _empty_statistics() -> Dict[str, Any]:
