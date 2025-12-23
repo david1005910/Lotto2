@@ -145,7 +145,8 @@ class SyncResponse(BaseModel):
 
 class ModelTrainResult(BaseModel):
     """Single model training result."""
-    accuracy: float
+    train_accuracy: float
+    test_accuracy: float
     trained: bool
 
 
@@ -154,3 +155,4 @@ class TrainResponse(BaseModel):
     models: Dict[str, ModelTrainResult]
     trained_at: str
     training_samples: int
+    test_samples: int

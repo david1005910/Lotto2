@@ -93,7 +93,8 @@ async def train():
 
         models = {
             model_name: ModelTrainResult(
-                accuracy=model_data["accuracy"],
+                train_accuracy=model_data["train_accuracy"],
+                test_accuracy=model_data["test_accuracy"],
                 trained=model_data["trained"]
             )
             for model_name, model_data in result["models"].items()
@@ -104,7 +105,8 @@ async def train():
             data=TrainResponse(
                 models=models,
                 trained_at=result["trained_at"],
-                training_samples=result["training_samples"]
+                training_samples=result["training_samples"],
+                test_samples=result["test_samples"]
             ),
             message="모델 학습 완료"
         )

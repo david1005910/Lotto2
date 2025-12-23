@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.model_selection import train_test_split
 
 from config import MODEL_PATH
 from services.data_service import get_all_results_df
@@ -90,67 +91,109 @@ def train_models() -> Dict[str, Any]:
 
     X, y = prepare_training_data(df)
 
+    # Train/Test split (80/20) for proper evaluation
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
     # Scale features
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
     # Save scaler
     joblib.dump(scaler, MODEL_PATH / "scaler.pkl")
 
     results: Dict[str, Any] = {}
 
-    # Train Random Forest
+    # Train Random Forest (reduced complexity)
     rf_model = MultiOutputRegressor(
         RandomForestRegressor(
             n_estimators=100,
-            max_depth=10,
+            max_depth=6,  # Reduced from 10
+            min_samples_split=10,  # Added to prevent overfitting
+            min_samples_leaf=5,  # Added to prevent overfitting
             random_state=42,
             n_jobs=-1
         )
     )
-    rf_model.fit(X_scaled, y)
+    rf_model.fit(X_train_scaled, y_train)
     joblib.dump(rf_model, MODEL_PATH / "random_forest.pkl")
-    rf_accuracy = evaluate_model(rf_model, X_scaled, y)
-    results["random_forest"] = {"accuracy": rf_accuracy, "trained": True}
+    rf_train_acc = evaluate_model(rf_model, X_train_scaled, y_train)
+    rf_test_acc = evaluate_model(rf_model, X_test_scaled, y_test)
+    results["random_forest"] = {
+        "train_accuracy": rf_train_acc,
+        "test_accuracy": rf_test_acc,
+        "trained": True
+    }
 
-    # Train Gradient Boosting
+    # Train Gradient Boosting (reduced complexity)
     gb_model = MultiOutputRegressor(
         GradientBoostingRegressor(
             n_estimators=50,
-            max_depth=5,
+            max_depth=3,  # Reduced from 5
+            min_samples_split=10,  # Added
+            min_samples_leaf=5,  # Added
+            learning_rate=0.1,
             random_state=42
         )
     )
-    gb_model.fit(X_scaled, y)
+    gb_model.fit(X_train_scaled, y_train)
     joblib.dump(gb_model, MODEL_PATH / "gradient_boosting.pkl")
-    gb_accuracy = evaluate_model(gb_model, X_scaled, y)
-    results["gradient_boosting"] = {"accuracy": gb_accuracy, "trained": True}
+    gb_train_acc = evaluate_model(gb_model, X_train_scaled, y_train)
+    gb_test_acc = evaluate_model(gb_model, X_test_scaled, y_test)
+    results["gradient_boosting"] = {
+        "train_accuracy": gb_train_acc,
+        "test_accuracy": gb_test_acc,
+        "trained": True
+    }
 
-    # Train Neural Network (MLP)
+    # Train Neural Network (MLP) with regularization
     mlp_model = MultiOutputRegressor(
         MLPRegressor(
-            hidden_layer_sizes=(128, 64, 32),
+            hidden_layer_sizes=(64, 32),  # Reduced from (128, 64, 32)
             activation='relu',
-            max_iter=500,
+            alpha=0.01,  # L2 regularization
+            learning_rate='adaptive',
+            learning_rate_init=0.001,
+            max_iter=300,  # Reduced from 500
+            early_stopping=True,  # Stop when validation score stops improving
+            validation_fraction=0.15,
+            n_iter_no_change=20,
             random_state=42
         )
     )
-    mlp_model.fit(X_scaled, y)
+    mlp_model.fit(X_train_scaled, y_train)
     joblib.dump(mlp_model, MODEL_PATH / "neural_network.pkl")
-    mlp_accuracy = evaluate_model(mlp_model, X_scaled, y)
-    results["neural_network"] = {"accuracy": mlp_accuracy, "trained": True}
+    mlp_train_acc = evaluate_model(mlp_model, X_train_scaled, y_train)
+    mlp_test_acc = evaluate_model(mlp_model, X_test_scaled, y_test)
+    results["neural_network"] = {
+        "train_accuracy": mlp_train_acc,
+        "test_accuracy": mlp_test_acc,
+        "trained": True
+    }
 
     # Save training info
     training_info = {
         "trained_at": datetime.now().isoformat(),
-        "training_samples": len(X)
+        "training_samples": len(X_train),
+        "test_samples": len(X_test)
     }
     joblib.dump(training_info, MODEL_PATH / "training_info.pkl")
+
+    # Save model accuracies for prediction
+    model_accuracies = {
+        "random_forest": {"train_accuracy": rf_train_acc, "test_accuracy": rf_test_acc},
+        "gradient_boosting": {"train_accuracy": gb_train_acc, "test_accuracy": gb_test_acc},
+        "neural_network": {"train_accuracy": mlp_train_acc, "test_accuracy": mlp_test_acc}
+    }
+    joblib.dump(model_accuracies, MODEL_PATH / "model_accuracies.pkl")
 
     return {
         "models": results,
         "trained_at": training_info["trained_at"],
-        "training_samples": training_info["training_samples"]
+        "training_samples": training_info["training_samples"],
+        "test_samples": training_info["test_samples"]
     }
 
 
@@ -187,8 +230,9 @@ def predict_numbers() -> Dict[str, Any]:
     scaler = joblib.load(MODEL_PATH / "scaler.pkl")
     features_scaled = scaler.transform([features])
 
-    # Load training info
+    # Load training info and model accuracies
     training_info = joblib.load(MODEL_PATH / "training_info.pkl")
+    model_accuracies = joblib.load(MODEL_PATH / "model_accuracies.pkl") if (MODEL_PATH / "model_accuracies.pkl").exists() else {}
 
     predictions: Dict[str, Any] = {}
 
@@ -200,10 +244,8 @@ def predict_numbers() -> Dict[str, Any]:
         # Post-process predictions
         numbers = _postprocess_prediction(raw_pred)
 
-        # Load accuracy from training
-        X, y = prepare_training_data(df)
-        X_scaled = scaler.transform(X)
-        accuracy = evaluate_model(model, X_scaled, y)
+        # Use saved test accuracy (not re-evaluated on full training data)
+        accuracy = model_accuracies.get(model_name, {}).get("test_accuracy", 0.0)
 
         predictions[model_name] = {
             "numbers": numbers,
