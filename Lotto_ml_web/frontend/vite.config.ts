@@ -9,6 +9,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
+        timeout: 300000, // 5 minutes for long operations like full sync
       },
     },
   },
