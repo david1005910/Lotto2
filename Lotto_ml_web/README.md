@@ -6,11 +6,21 @@
 
 ## 기능
 
-- **당첨번호 조회**: 1회~1202회 역대 당첨번호 조회 (페이지네이션, 검색)
+- **당첨번호 조회**: 1회~최신 역대 당첨번호 조회 (페이지네이션, 검색)
 - **통계 분석**: 번호별 출현 빈도, 홀짝 분포, 합계 분포, 연속번호 통계
 - **ML 예측**: Random Forest, Gradient Boosting, Neural Network 3개 모델
 - **번호 추천**: 고빈도, 저빈도, 홀짝균형, 구간분산, 합계최적 5가지 전략
-- **관리 기능**: 데이터 동기화, 모델 학습
+- **관리 기능**: 데이터 동기화, 모델 학습, 학습 결과 확인
+
+## ML 모델 성능
+
+| 모델 | Train Accuracy | Test Accuracy | 설명 |
+|------|----------------|---------------|------|
+| Random Forest | 45.37% | 37.08% | 100개 결정 트리 앙상블 |
+| Gradient Boosting | 46.59% | 37.50% | 순차적 약한 학습기 결합 |
+| Neural Network | 42.63% | 36.46% | 64-32 MLP + 정규화 |
+
+> 정확도는 ±3 범위 기준입니다. Train/Test Split (80/20)으로 평가합니다.
 
 ## 기술 스택
 
@@ -19,7 +29,7 @@
 - FastAPI 0.104+
 - Scikit-learn (ML 모델)
 - Pandas / NumPy
-- SQLite
+- Excel (openpyxl) - 데이터 저장
 
 ### Frontend
 - React 18 + TypeScript 5
@@ -52,10 +62,13 @@ npm run dev
 ```
 - 웹 앱: http://localhost:5173
 
-### 4. Docker로 실행 (선택)
+### 4. Docker로 실행 (권장)
 ```bash
 docker-compose up --build -d
 ```
+- 웹 앱: http://localhost (포트 80)
+- 백엔드 API: http://localhost:8000
+- API 문서: http://localhost:8000/docs
 
 ## 사용 방법
 
@@ -98,6 +111,15 @@ Lotto_ml_web/
 ├── docker-compose.yml
 └── README.md
 ```
+
+## 변경 이력
+
+### 2025-12-25
+- **데이터 저장소 변경**: SQLite → Excel (.xlsx) 마이그레이션
+- **ML 과적합 해결**: Train/Test Split (80/20) 적용, 모델 복잡도 감소
+- **Neural Network 개선**: (128,64,32) → (64,32), L2 정규화, 조기 종료 적용
+- **프론트엔드**: 학습 결과 테이블 추가 (Train/Test Accuracy, 과적합 Gap)
+- **타임아웃 개선**: 동기화/학습 작업 5분 타임아웃으로 증가
 
 ## 라이선스
 
