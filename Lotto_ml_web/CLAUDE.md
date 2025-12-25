@@ -14,7 +14,7 @@ Korean Lotto (로또) ML prediction web application that collects historical win
 - Python 3.11+, FastAPI 0.104+, Uvicorn
 - Scikit-learn (Random Forest, Gradient Boosting, MLP)
 - Pandas/NumPy for data processing
-- SQLite (dev) / PostgreSQL (prod)
+- Excel (.xlsx) via openpyxl for data storage
 
 ### Frontend
 - React 18 + TypeScript 5 + Vite 5
@@ -56,7 +56,7 @@ curl http://localhost:8000/api/v1/predict             # Get predictions
 ## Architecture
 
 ```
-React (Vite) → FastAPI → SQLite/PostgreSQL
+React (Vite) → FastAPI → Excel (.xlsx)
                   ↓
               ML Models (.pkl files)
                   ↓
@@ -65,9 +65,10 @@ React (Vite) → FastAPI → SQLite/PostgreSQL
 
 **Key directories:**
 - `backend/routers/` - API route handlers
-- `backend/services/` - Business logic (data_service, ml_service, statistics_service, recommend_service)
-- `backend/models/` - Database models and Pydantic schemas
+- `backend/services/` - Business logic (data_service, excel_service, ml_service, statistics_service, recommend_service)
+- `backend/models/` - Pydantic schemas
 - `backend/ml_models/` - Trained model files (.pkl)
+- `backend/data/` - Excel data file (lotto_data.xlsx)
 - `frontend/src/pages/` - Route pages (Home, Results, Statistics, Predict, Recommend, Admin)
 - `frontend/src/components/` - Reusable components (LottoBall, Layout, Navbar)
 
@@ -90,10 +91,15 @@ Three models with 79 features:
 - Mean/standard deviation (2 features)
 - Per-number frequency 1-45 (45 features)
 
-Model hyperparameters:
-- Random Forest: n_estimators=100, max_depth=10
-- Gradient Boosting: n_estimators=50, max_depth=5
-- MLP: layers=(128,64,32), activation=ReLU
+Model hyperparameters (optimized to prevent overfitting):
+- Random Forest: n_estimators=100, max_depth=6, min_samples_split=10
+- Gradient Boosting: n_estimators=50, max_depth=3, min_samples_split=10
+- MLP: layers=(64,32), alpha=0.01, early_stopping=True
+
+Model evaluation:
+- Train/Test Split: 80/20
+- Accuracy metric: ±3 range
+- Test accuracy: ~35-37%
 
 ## External API
 
