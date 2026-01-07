@@ -45,7 +45,7 @@ app.include_router(results_router, prefix="/api/v1", tags=["results"])
 app.include_router(statistics_router, prefix="/api/v1", tags=["statistics"])
 app.include_router(predict_router, prefix="/api/v1", tags=["predict"])
 app.include_router(recommend_router, prefix="/api/v1", tags=["recommend"])
-app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
+app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
 
 
 @app.get("/", tags=["root"])

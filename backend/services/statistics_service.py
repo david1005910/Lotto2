@@ -1,12 +1,12 @@
 from typing import Dict, Any, Optional, List
 from collections import Counter
 
-from services.excel_service import load_from_excel
+from services.data_service import get_all_results_df
 
 
 def calculate_statistics(recent: Optional[int] = None) -> Dict[str, Any]:
-    """Calculate comprehensive lotto statistics."""
-    df = load_from_excel()
+    """Calculate comprehensive lotto statistics from database."""
+    df = get_all_results_df()
 
     if df is None or len(df) == 0:
         return _empty_statistics()
