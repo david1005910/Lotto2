@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #f3f4f6;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom Lotto Ball Colors */
+.bg-lotto-yellow { background-color: #FBC400; }
+.bg-lotto-blue { background-color: #69C8F2; }
+.bg-lotto-red { background-color: #FF7272; }
+.bg-lotto-gray { background-color: #AAAAAA; }
+.bg-lotto-green { background-color: #B0D840; }
+
+.text-lotto-yellow { color: #FBC400; }
+.text-lotto-red { color: #FF7272; }
+.text-lotto-green { color: #B0D840; }
+
+.bg-lotto-yellow\/20 { background-color: rgba(251, 196, 0, 0.2); }
+.bg-lotto-red\/20 { background-color: rgba(255, 114, 114, 0.2); }
+.bg-lotto-green\/20 { background-color: rgba(176, 216, 64, 0.2); }
