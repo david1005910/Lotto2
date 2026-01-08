@@ -126,3 +126,41 @@ export interface TrainData {
   training_samples: number;
   test_samples: number;
 }
+
+// Simulation Types
+export interface WinnerStats {
+  count: number;
+  percentage: number;
+}
+
+export interface SimulationResults {
+  '1st_place': WinnerStats;
+  '2nd_place': WinnerStats;
+  '3rd_place': WinnerStats;
+  '4th_place': WinnerStats;
+  '5th_place': WinnerStats;
+  'no_prize': WinnerStats;
+}
+
+export interface SimulationData {
+  total_predictions: number;
+  winning_numbers: number[];
+  bonus_number: number;
+  draw_info: {
+    draw_no: number;
+    draw_date: string;
+  };
+  winner_stats: SimulationResults;
+  sample_predictions: number[][];
+}
+
+export interface SimulationInfo {
+  available: boolean;
+  latest_draw: {
+    draw_no: number;
+    draw_date: string;
+    winning_numbers: number[];
+    bonus_number: number;
+  };
+  description: string;
+}

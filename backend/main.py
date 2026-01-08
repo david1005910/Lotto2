@@ -11,6 +11,7 @@ from routers import (
     recommend_router,
     admin_router
 )
+from routers.simulation import router as simulation_router
 
 
 @asynccontextmanager
@@ -46,6 +47,7 @@ app.include_router(statistics_router, prefix="/api/v1", tags=["statistics"])
 app.include_router(predict_router, prefix="/api/v1", tags=["predict"])
 app.include_router(recommend_router, prefix="/api/v1", tags=["recommend"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(simulation_router, tags=["simulation"])
 
 
 @app.get("/", tags=["root"])

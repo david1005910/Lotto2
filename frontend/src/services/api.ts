@@ -9,6 +9,8 @@ import type {
   SystemStatus,
   SyncData,
   TrainData,
+  SimulationData,
+  SimulationInfo,
 } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -63,6 +65,28 @@ export const api = {
   recommend: {
     get: async (): Promise<APIResponse<RecommendData>> => {
       const response = await client.get('/recommend');
+      return response.data;
+    },
+  },
+
+  // Simulation
+  simulation: {
+    run: async (numPredictions: number): Promise<APIResponse<SimulationData>> => {
+      const response = await client.post('/simulation/run', {
+        num_predictions: numPredictions,
+      }, {
+        timeout: numPredictions > 1000000 ? 600000 : 300000  // 10 minutes for large simulations, 5 minutes for others
+      });
+      return response.data;
+    },
+
+    info: async (): Promise<APIResponse<SimulationInfo>> => {
+      const response = await client.get('/simulation/info');
+      return response.data;
+    },
+
+    status: async (): Promise<APIResponse<{ available: boolean; ready: boolean }>> => {
+      const response = await client.get('/simulation/status');
       return response.data;
     },
   },
