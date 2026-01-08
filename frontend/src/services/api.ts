@@ -70,22 +70,22 @@ export const api = {
   // Admin
   admin: {
     sync: async (): Promise<APIResponse<SyncData>> => {
-      const response = await client.post('/sync');
+      const response = await client.post('/admin/sync');
       return response.data;
     },
 
     syncFull: async (): Promise<APIResponse<SyncData>> => {
-      const response = await client.post('/sync/full');
+      const response = await client.post('/admin/sync/full');
       return response.data;
     },
 
     train: async (): Promise<APIResponse<TrainData>> => {
-      const response = await client.post('/train');
+      const response = await client.post('/admin/train');
       return response.data;
     },
 
     status: async (): Promise<APIResponse<SystemStatus>> => {
-      const response = await client.get('/status');
+      const response = await client.get('/admin/status');
       return response.data;
     },
   },
